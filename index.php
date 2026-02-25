@@ -367,6 +367,7 @@ if (isset($_GET['action'])) {
 
             editor.on('cursorActivity', ()=> {
                 if (isSelectionFromDesign) return;
+                if (isSyncFromDesign) return;
                 syncSelectionToDesignFromCode();
             });
 
@@ -653,6 +654,7 @@ if (isset($_GET['action'])) {
 
         function doUndoFromDesign() {
             if (!editor || !isCurrentFileHtml()) return;
+            if (editor.getDoc().historySize().undo === 0) return;
             cancelPreviewUpdateForUndoRedo();
             const iframe = document.getElementById('preview');
             const win = iframe && iframe.contentWindow;
@@ -666,6 +668,7 @@ if (isset($_GET['action'])) {
 
         function doRedoFromDesign() {
             if (!editor || !isCurrentFileHtml()) return;
+            if (editor.getDoc().historySize().redo === 0) return;
             cancelPreviewUpdateForUndoRedo();
             const iframe = document.getElementById('preview');
             const win = iframe && iframe.contentWindow;
@@ -681,7 +684,9 @@ if (isset($_GET['action'])) {
             setTimeout(function() {
                 try {
                     if (editor && editor.getWrapperElement) editor.getWrapperElement().blur();
-                    if (iframe && iframe.contentWindow) iframe.contentWindow.focus();
+                    if (iframe && iframe.contentDocument && iframe.contentDocument.body) {
+                        iframe.contentDocument.body.focus();
+                    }
                 } catch (e) {}
             }, 0);
         }
@@ -927,12 +932,17 @@ if (isset($_GET['action'])) {
                 let fmt = node && node.closest ? node.closest(tagName) : null;
                 if (fmt && fmt.tagName.toLowerCase() === tagName) {
                     const parent = fmt.parentNode;
+                    const firstUnwrapped = fmt.firstChild;
+                    const lastUnwrapped = fmt.lastChild;
                     while (fmt.firstChild) parent.insertBefore(fmt.firstChild, fmt);
                     parent.removeChild(fmt);
                     sel.removeAllRanges();
-                    const newRange = doc.createRange();
-                    newRange.selectNodeContents(parent);
-                    sel.addRange(newRange);
+                    if (firstUnwrapped && lastUnwrapped) {
+                        const newRange = doc.createRange();
+                        newRange.setStartBefore(firstUnwrapped);
+                        newRange.setEndAfter(lastUnwrapped);
+                        sel.addRange(newRange);
+                    }
                 } else {
                     const wrapper = doc.createElement(tagName);
                     try {
@@ -963,6 +973,10 @@ if (isset($_GET['action'])) {
                 }
             }
             syncFromDesign();
+            const _ifr = document.getElementById('preview');
+            if (_ifr && _ifr.contentDocument && _ifr.contentDocument.body) {
+                _ifr.contentDocument.body.focus();
+            }
         }
 
         function applyClassProperty(value){
@@ -975,12 +989,17 @@ if (isset($_GET['action'])) {
                 if (span && value && span.classList.contains(value)) {
                     // toggle off: scoatem span-ul
                     const parent = span.parentNode;
+                    const firstUnwrapped = span.firstChild;
+                    const lastUnwrapped = span.lastChild;
                     while (span.firstChild) parent.insertBefore(span.firstChild, span);
                     parent.removeChild(span);
                     sel.removeAllRanges();
-                    const newRange = doc.createRange();
-                    newRange.selectNodeContents(parent);
-                    sel.addRange(newRange);
+                    if (firstUnwrapped && lastUnwrapped) {
+                        const newRange = doc.createRange();
+                        newRange.setStartBefore(firstUnwrapped);
+                        newRange.setEndAfter(lastUnwrapped);
+                        sel.addRange(newRange);
+                    }
                 } else {
                     const wrap = doc.createElement('span');
                     const frag = range.extractContents();
@@ -1006,6 +1025,10 @@ if (isset($_GET['action'])) {
                 }
             }
             syncFromDesign();
+            const _ifr = document.getElementById('preview');
+            if (_ifr && _ifr.contentDocument && _ifr.contentDocument.body) {
+                _ifr.contentDocument.body.focus();
+            }
         }
 
         async function openFromPath(){
